@@ -109,7 +109,7 @@ public class Basic {
     // Main Method
     public static void main(String[] args) throws Exception {
         // String inputFilePath = "datapoints/in2.txt";
-        String inputFilePath = "SampleTestCases/input4.txt";
+        String inputFilePath = "SampleTestCases/input5.txt";
         String outputFilePath = "output.txt";
 
         if (args.length > 0) {
