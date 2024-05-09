@@ -18,9 +18,22 @@ public class Efficient
             {48, 118, 0, 110},
             {94, 48, 110, 0}
     };
+
+    private static class Result{
+        int cost;
+        String alignment1;
+        String alignment2;
+
+        Result(int cost, String alignment1, String alignment2){
+            this.cost = cost;
+            this.alignment1 = alignment1;
+            this.alignment2 = alignment2;
+        }
+    }
+
     private static Map<String, Integer> dpCache = new HashMap<>();
 
-    public static String[]alignments = new String[2];
+    public static String[]alignments = {"", ""};
     public static float timeInMs = 0;
     public static float memInKb = 0;
 
@@ -41,7 +54,7 @@ public class Efficient
         }
     }
 
-    private static int dp(String s1, String s2, int[][] dp) {
+    private static Result dp(String s1, String s2, int[][] dp) {
         int n = s1.length();
         int m = s2.length();
 
@@ -64,43 +77,190 @@ public class Efficient
             }
         }
 
-        return dp[n][m];
+        //constructAlignment(dp, s1, s2, n, m);
+        StringBuilder alignment1 = new StringBuilder();
+        StringBuilder alignment2 = new StringBuilder();
+
+        // start from dp[n][m]
+        int i = n; int j = m;
+        while(i > 0 || j > 0){            
+            if(i > 0 && j > 0 && dp[i][j] == dp[i-1][j-1] + MISMATCH_COST[charToIndex(s1.charAt(i-1))][charToIndex(s2.charAt(j-1))]){ // diagonal
+                alignment1.append(s1.charAt(i-1));
+                alignment2.append(s2.charAt(j-1));
+                i--;
+                j--;
+            }else if(i > 0 && dp[i][j] == dp[i-1][j] + GAP_PENALTY){ // going up 
+                alignment1.append(s1.charAt(i-1));
+                alignment2.append("_");
+                i--;
+            }else if(j > 0 && dp[i][j] == dp[i][j-1] + GAP_PENALTY){ // going left
+                alignment1.append("_");
+                alignment2.append(s2.charAt(j-1));
+                j--;
+            }
+            
+        }
+
+        return new Result(dp[n][m], alignment1.reverse().toString(), alignment2.reverse().toString());
+       // return dp[n][m];
     }
 
+    private static int[] solveDP(String s1, String s2){
+        int m = s1.length(); int n = s2.length();
+        int[][]dp = new int[2][n+1];
 
+        // int[] prevCost = new int[s2.length() + 1];
+        // int[] curCost = new int[s2.length() + 1];
 
+        // initialize prevCost
+        // seq2 match with empty seq1
+        for(int j = 0; j <= n; j++){
+            dp[0][j] = j * GAP_PENALTY;
+        }
 
-    private static void constructAlignment(int[][] dp, String s1, String s2, int n, int m, StringBuilder align1, StringBuilder align2) {
-        int i = n;
-        int j = m;
-
-        while (i > 0 || j > 0) {
-            if (i > 0 && j > 0 && dp[i][j] == dp[i - 1][j - 1] + MISMATCH_COST[charToIndex(s1.charAt(i - 1))][charToIndex(s2.charAt(j - 1))]) {
-                align1.append(s1.charAt(i - 1));
-                align2.append(s2.charAt(j - 1));
-                i--;
-                j--;
-            } else if (i > 0 && dp[i][j] == dp[i - 1][j] + GAP_PENALTY) {
-                align1.append(s1.charAt(i - 1));
-                align2.append('_');
-                i--;
-            } else if (j > 0) {
-                align1.append('_');
-                align2.append(s2.charAt(j - 1));
-                j--;
+        for(int i = 1; i <= m; i++){
+            dp[1][0] = i * GAP_PENALTY; // ?
+            for(int j = 1; j <= n; j++){
+                int mismatchCost = MISMATCH_COST[charToIndex(s1.charAt(i-1))][charToIndex(s2.charAt(j-1))];
+                dp[1][j] = Math.min(dp[0][j-1] + mismatchCost, 
+                Math.min(dp[0][j] + GAP_PENALTY, dp[1][j-1] + GAP_PENALTY));
+            }
+            // copy second array to first array
+            for(int j = 0; j <= n; j++){
+                dp[0][j] = dp[1][j];
             }
         }
 
-        align1.reverse();
-        align2.reverse();
+        return dp[1];
     }
+
+    private static void constructAlignment(int[][]dp, String s1, String s2, int n, int m){
+        StringBuilder alignment1 = new StringBuilder();
+        StringBuilder alignment2 = new StringBuilder();
+
+        // start from dp[n][m]
+        int i = n; int j = m;
+        while(i > 0 || j > 0){            
+            if(i > 0 && j > 0 && dp[i][j] == dp[i-1][j-1] + MISMATCH_COST[charToIndex(s1.charAt(i-1))][charToIndex(s2.charAt(j-1))]){ // diagonal
+                alignment1.append(s1.charAt(i-1));
+                alignment2.append(s2.charAt(j-1));
+                // alignments[0] = s1.charAt(i-1) + alignments[0];
+                // alignments[1] = s2.charAt(j-1) + alignments[1];
+                i--;
+                j--;
+            }else if(i > 0 && dp[i][j] == dp[i-1][j] + GAP_PENALTY){ // going up 
+                alignment1.append(s1.charAt(i-1));
+                alignment2.append("_");
+                // alignments[0] = s1.charAt(i-1) + alignments[0];
+                // alignments[1] = '_' + alignments[1];
+                i--;
+            }else if(j > 0 && dp[i][j] == dp[i][j-1] + GAP_PENALTY){ // going left
+                alignment1.append("_");
+                alignment2.append(s2.charAt(j-1));
+                // alignments[0] = '_' + alignments[0];
+                // alignments[1] = s2.charAt(j-1) + alignments[1];
+                j--;
+            }
+            
+        }
+
+        // alignment1.reverse();
+        // alignment2.reverse();
+
+        // alignments[0] = alignment1.toString(); 
+        // alignments[1] = alignment2.toString();
+
+        // System.out.println(alignment1.toString());
+        // System.out.println(alignment2.toString());
+    }
+
+
+    // private static void constructAlignment(int[][] dp, String s1, String s2, int n, int m, StringBuilder align1, StringBuilder align2) {
+    //     int i = n;
+    //     int j = m;
+
+    //     while (i > 0 || j > 0) {
+    //         if (i > 0 && j > 0 && dp[i][j] == dp[i - 1][j - 1] + MISMATCH_COST[charToIndex(s1.charAt(i - 1))][charToIndex(s2.charAt(j - 1))]) {
+    //             align1.append(s1.charAt(i - 1));
+    //             align2.append(s2.charAt(j - 1));
+    //             i--;
+    //             j--;
+    //         } else if (i > 0 && dp[i][j] == dp[i - 1][j] + GAP_PENALTY) {
+    //             align1.append(s1.charAt(i - 1));
+    //             align2.append('_');
+    //             i--;
+    //         } else if (j > 0) {
+    //             align1.append('_');
+    //             align2.append(s2.charAt(j - 1));
+    //             j--;
+    //         }
+    //     }
+
+    //     align1.reverse();
+    //     align2.reverse();
+    // }
+
+    private static Result solveDnC(String s1, String s2){
+        // base case
+        if(s1.length() == 0){ 
+            String a1 = ""; String a2 = "";
+            for(int i = 0; i < s2.length(); i++){
+                a1 += '_';
+                a2 += s2.charAt(i);
+            }
+            Result result = new Result(GAP_PENALTY * s2.length(), a1, a2);
+            return result;
+        }
+
+        if(s2.length() == 0){
+            String a1 = ""; String a2 = "";
+            for(int i = 0; i < s1.length(); i++){
+                a1 += s1.charAt(i);
+                a2 += "_";
+            }
+            Result result = new Result(GAP_PENALTY * s1.length(), a1, a2);
+            return result;
+        }
+
+        if(s1.length() == 1 || s2.length() == 1){
+            int[][]dp = new int[s1.length() + 1][s2.length() + 1];
+            return dp(s1, s2, dp); // basic dp
+        }
+
+        // Divide
+        int mid1 = s1.length() / 2;
+
+        int[]leftCost = solveDP(s1.substring(0, mid1), s2);
+        int[]rightCost = solveDP(new StringBuilder(s1.substring(mid1)).reverse().toString(), 
+        new StringBuilder(s2).reverse().toString());
+
+        // Find best split point
+        int minCost = Integer.MAX_VALUE;
+        int splitPoint = 0; // split point for string 2
+        for(int j = 0; j <= s2.length(); j++){
+            int cost = leftCost[j] + rightCost[s2.length()-j];
+            if(cost < minCost){
+                minCost = cost;
+                splitPoint = j;
+            }
+        }
+
+        Result resultL = solveDnC(s1.substring(0, mid1), s2.substring(0, splitPoint));
+        Result resultR = solveDnC(s1.substring(mid1), s2.substring(splitPoint));
+        
+        //return costL + costR;
+        return new Result(resultL.cost + resultR.cost, 
+        resultL.alignment1 + resultR.alignment1, 
+        resultL.alignment2 + resultR.alignment2);
+    }
+
 
     private static int dpDnC(String string1, String string2, StringBuilder align1, StringBuilder align2) {
         if (string1.length() <= 2 || string2.length() <= 2) {
             int[][] dp = new int[string1.length() + 1][string2.length() + 1];
-            int cost = dp(string1, string2, dp);
-            constructAlignment(dp, string1, string2, string1.length(), string2.length(), align1, align2);
-            return cost;
+            // int cost = dp(string1, string2, dp);
+            // constructAlignment(dp, string1, string2, string1.length(), string2.length(), align1, align2);
+            return 0;//cost;
         }
 
         int mid1 = string1.length() / 2;
@@ -146,7 +306,7 @@ public class Efficient
         String key = s1 + "|" + s2;
         return dpCache.computeIfAbsent(key, k -> {
             int[][] dp = new int[s1.length() + 1][s2.length() + 1];
-            return dp(s1, s2, dp);  // Compute the cost and store it in dpCache
+            return 0;//dp(s1, s2, dp);  // Compute the cost and store it in dpCache
         });
     }
 
@@ -156,8 +316,8 @@ public class Efficient
     // Main Method
     public static void main(String[] args) throws Exception {
         // String inputFilePath = "datapoints/in2.txt";
-        String inputFilePath = "SampleTestCases/input4.txt";
-        String outputFilePath = "output.txt";
+        String inputFilePath = "SampleTestCases/input5.txt";
+        String outputFilePath = "outputEfficient.txt"; // "output.txt";
 
         if (args.length > 0) {
             inputFilePath = args[0];
@@ -171,8 +331,8 @@ public class Efficient
             StringGenerator generator = new Efficient().new StringGenerator(inputFilePath);
             String string1 = generator.getStrings()[0];
             String string2 = generator.getStrings()[1];
-            StringBuilder align1 = new StringBuilder();
-            StringBuilder align2 = new StringBuilder();
+            // StringBuilder align1 = new StringBuilder();
+            // StringBuilder align2 = new StringBuilder();
             
 
             Runtime runtime = Runtime.getRuntime();
@@ -185,8 +345,8 @@ public class Efficient
 
 
             // calculate optimal cost & alignments using dp
-            int optCost = dpDnC(string1, string2, align1, align2);
-
+            // int optCost = dpDnC(string1, string2, align1, align2);
+            Result memEffResult = solveDnC(string1, string2);
 
 
 
@@ -209,12 +369,12 @@ public class Efficient
             FileWriter writer = new FileWriter(file, true);
             BufferedWriter bufferedWriter = new BufferedWriter(writer);
             // write optimal cost
-            bufferedWriter.write(Integer.toString(optCost));
+            bufferedWriter.write(Integer.toString(memEffResult.cost));
             bufferedWriter.newLine();
             // write alignments
-            bufferedWriter.write(align1.toString());
+            bufferedWriter.write(memEffResult.alignment1);
             bufferedWriter.newLine();
-            bufferedWriter.write(align2.toString());
+            bufferedWriter.write(memEffResult.alignment2);
             bufferedWriter.newLine();
             // write time in Ms
             bufferedWriter.write(String.valueOf(timeInMs));
